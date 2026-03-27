@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#050505">
     <title>Досье: АГЕНТ МИМИК</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -20,6 +20,7 @@
             --text: #d4d4d8;
             --muted: #71717a;
             --danger: #ef4444;
+            --green: #22c55e;
             --safe: env(safe-area-inset-bottom, 0px);
         }
 
@@ -29,8 +30,57 @@
             color: var(--text);
             -webkit-tap-highlight-color: transparent;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
+        /* ===== BOOT SCREEN ===== */
+        #boot {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s;
+        }
+        #boot.done { opacity: 0; pointer-events: none; }
+        #boot-logo {
+            width: 80px; height: 80px;
+            background: url('seal.png') center/contain no-repeat;
+            filter: grayscale(1) brightness(0.6);
+            margin-bottom: 24px;
+            animation: bootPulse 1s ease-in-out infinite alternate;
+        }
+        @keyframes bootPulse {
+            from { opacity: 0.3; filter: grayscale(1) brightness(0.4); }
+            to { opacity: 1; filter: grayscale(0) brightness(1); }
+        }
+        #boot-text {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--accent);
+            font-size: 12px;
+            text-align: center;
+            min-height: 80px;
+            max-width: 300px;
+            line-height: 1.6;
+        }
+        #boot-bar-wrap {
+            width: 200px;
+            height: 3px;
+            background: rgba(113,113,122,0.3);
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        #boot-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        /* ===== MAIN PAGE ===== */
         .page {
             width: 100%;
             max-width: 480px;
@@ -41,19 +91,20 @@
             position: relative;
             overflow: hidden;
             padding: 24px 20px calc(32px + var(--safe));
+            opacity: 0;
+            transition: opacity 0.5s 0.3s;
         }
+        .page.visible { opacity: 1; }
 
-        /* Scanlines — subtle */
         .page::after {
             content: '';
             position: fixed;
             inset: 0;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
             pointer-events: none;
             z-index: 100;
         }
 
-        /* Background seal behind photo */
         .seal-bg {
             position: absolute;
             top: 80px;
@@ -68,7 +119,7 @@
             z-index: 1;
         }
 
-        /* Header */
+        /* ===== HEADER ===== */
         .header {
             text-align: center;
             border-bottom: 2px solid rgba(245,158,11,0.4);
@@ -78,10 +129,11 @@
             z-index: 5;
         }
         .header h1 {
+            font-family: 'Orbitron', sans-serif;
             color: #fff;
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 6px;
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 8px;
             text-transform: uppercase;
         }
         .header .sub {
@@ -97,8 +149,23 @@
             margin-top: 4px;
             text-transform: uppercase;
         }
+        .classified-stamp {
+            position: absolute;
+            top: 50%;
+            right: -8px;
+            transform: translateY(-50%) rotate(12deg);
+            border: 3px solid var(--danger);
+            color: var(--danger);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 3px 8px;
+            letter-spacing: 2px;
+            opacity: 0.6;
+            pointer-events: none;
+        }
 
-        /* Photo section */
+        /* ===== PHOTO ===== */
         .photo-section {
             display: flex;
             flex-direction: column;
@@ -114,33 +181,83 @@
             position: relative;
             margin-bottom: 20px;
             box-shadow: 0 0 30px rgba(245,158,11,0.12);
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        .photo-frame::before,
-        .photo-frame::after,
-        .photo-frame .c1::before,
-        .photo-frame .c1::after {
+        .photo-frame::before, .photo-frame::after,
+        .photo-frame .c1::before, .photo-frame .c1::after {
             content: '';
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 20px; height: 20px;
             border-color: var(--accent);
             border-style: solid;
             z-index: 6;
+            transition: border-color 0.3s;
         }
         .photo-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
         .photo-frame::after { top: 0; right: 0; border-width: 3px 3px 0 0; }
         .photo-frame .c1::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
         .photo-frame .c1::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+        .photo-frame.scanning::before, .photo-frame.scanning::after,
+        .photo-frame.scanning .c1::before, .photo-frame.scanning .c1::after {
+            border-color: var(--green);
+        }
 
         .photo-frame img {
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             object-fit: cover;
             display: block;
             filter: contrast(1.05) sepia(0.08);
         }
 
-        /* ID card */
+        /* Scan laser */
+        .scan-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--green), transparent);
+            box-shadow: 0 0 15px var(--green), 0 0 30px var(--green);
+            z-index: 10;
+            top: -3px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .photo-frame.scanning .scan-line {
+            opacity: 1;
+            animation: scanDown 1.2s ease-in-out;
+        }
+        @keyframes scanDown {
+            0% { top: -3px; opacity: 1; }
+            100% { top: 100%; opacity: 1; }
+        }
+
+        /* Scan result */
+        .scan-result {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 11;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .scan-result.show { opacity: 1; }
+        .scan-result span {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--green);
+            background: rgba(0,0,0,0.7);
+            padding: 6px 14px;
+            border: 1px solid var(--green);
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--green);
+        }
+
+        /* ===== ID CARD ===== */
         .id-card {
             width: 100%;
             background: rgba(15,15,17,0.9);
@@ -150,16 +267,21 @@
         }
         .id-card .badge {
             position: absolute;
-            top: -10px;
-            right: -6px;
+            top: -10px; right: -6px;
             background: var(--accent);
             color: #000;
-            font-size: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
             font-weight: 700;
             padding: 3px 10px;
             text-transform: uppercase;
             transform: rotate(2deg);
             letter-spacing: 1px;
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 0 rgba(245,158,11,0); }
+            50% { box-shadow: 0 0 12px rgba(245,158,11,0.4); }
         }
         .id-row {
             display: flex;
@@ -175,15 +297,17 @@
             text-transform: uppercase;
             letter-spacing: 1.5px;
         }
-        .id-val {
-            color: #fff;
-            font-weight: 700;
-            font-size: 15px;
-        }
+        .id-val { color: #fff; font-weight: 700; font-size: 15px; }
         .id-val.code { color: var(--accent); font-size: 12px; font-weight: 400; }
-        .id-val.callsign { color: var(--neon); font-size: 20px; letter-spacing: 4px; }
+        .id-val.callsign {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon);
+            font-size: 20px;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(251,191,36,0.3);
+        }
 
-        /* Sections */
+        /* ===== SECTION ===== */
         .section {
             margin-bottom: 24px;
             position: relative;
@@ -202,14 +326,24 @@
             gap: 8px;
         }
         .section-title .dot {
-            width: 6px;
-            height: 6px;
+            width: 6px; height: 6px;
             background: var(--accent);
             display: inline-block;
             flex-shrink: 0;
         }
 
-        /* Timeline items */
+        /* Scroll-reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ===== TIMELINE ===== */
         .timeline-item {
             padding-left: 14px;
             border-left: 2px solid rgba(113,113,122,0.3);
@@ -222,10 +356,8 @@
         .timeline-item::before {
             content: '';
             position: absolute;
-            left: -4px;
-            top: 7px;
-            width: 6px;
-            height: 6px;
+            left: -4px; top: 7px;
+            width: 6px; height: 6px;
             background: var(--muted);
         }
         .timeline-item.highlight { border-left-color: rgba(245,158,11,0.45); }
@@ -233,13 +365,12 @@
         .tl-label { color: var(--accent); font-weight: 700; }
         .tl-white { color: #fff; font-weight: 700; }
         .tl-highlight {
-            color: #fff;
-            font-weight: 700;
+            color: #fff; font-weight: 700;
             background: rgba(113,113,122,0.2);
             padding: 0 4px;
         }
 
-        /* Arsenal card */
+        /* ===== ARSENAL ===== */
         .arsenal {
             background: rgba(15,15,17,0.5);
             border: 1px solid rgba(113,113,122,0.25);
@@ -257,15 +388,38 @@
             font-size: 13px;
             line-height: 1.6;
             margin-bottom: 10px;
+            cursor: pointer;
+            transition: transform 0.15s, background 0.2s;
+            padding: 6px 8px;
+            margin-left: -8px;
+            margin-right: -8px;
+            border-radius: 4px;
         }
         .arsenal-item:last-child { margin-bottom: 0; }
-        .a-icon { margin-right: 4px; }
+        .arsenal-item:active { transform: scale(0.97); background: rgba(245,158,11,0.06); }
+        .a-icon { margin-right: 4px; font-size: 15px; }
         .a-label { color: #fff; }
 
-        /* Skills */
-        .skill {
-            margin-bottom: 12px;
+        /* Arsenal detail popup */
+        .arsenal-detail {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.35s ease, opacity 0.25s, margin 0.3s;
+            font-size: 11px;
+            color: var(--accent);
+            line-height: 1.5;
+            margin-top: 0;
+            padding-left: 28px;
         }
+        .arsenal-detail.open {
+            max-height: 60px;
+            opacity: 1;
+            margin-top: 4px;
+        }
+
+        /* ===== SKILLS ===== */
+        .skill { margin-bottom: 12px; }
         .skill:last-child { margin-bottom: 0; }
         .skill-head {
             display: flex;
@@ -276,7 +430,7 @@
         }
         .skill-name { color: var(--text); }
         .skill-name.top { color: #fff; font-weight: 700; }
-        .skill-num { color: var(--accent); }
+        .skill-num { color: var(--accent); font-family: 'Orbitron', sans-serif; font-size: 10px; }
         .skill-num.top { color: var(--neon); }
         .skill-track {
             height: 6px;
@@ -287,13 +441,12 @@
         .skill-fill {
             height: 100%;
             background: var(--accent);
-            animation: grow 1.2s ease-out forwards;
-            transform-origin: left;
+            width: 0%;
+            transition: width 1.2s ease-out;
         }
         .skill-fill.top { background: var(--neon); }
-        @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-        /* Vulnerability */
+        /* ===== VULNERABILITY ===== */
         .vuln {
             background: rgba(24,24,27,0.45);
             border: 1px solid rgba(113,113,122,0.3);
@@ -326,7 +479,7 @@
             color: rgba(212,212,216,0.85);
         }
 
-        /* Quest result */
+        /* ===== QUEST ===== */
         .quest {
             padding: 16px;
             background: rgba(245,158,11,0.07);
@@ -336,8 +489,7 @@
         .quest::before, .quest::after {
             content: '';
             position: absolute;
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             border-color: var(--accent);
             border-style: solid;
         }
@@ -357,21 +509,16 @@
             letter-spacing: 1px;
         }
         .quest-badge {
+            font-family: 'Orbitron', sans-serif;
             background: var(--accent);
             color: #000;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
-            padding: 2px 8px;
+            padding: 3px 10px;
+            letter-spacing: 1px;
         }
-        .quest-text {
-            font-size: 13px;
-            color: #fff;
-            line-height: 1.65;
-        }
-        .quest-reward {
-            color: var(--neon);
-            font-weight: 700;
-        }
+        .quest-text { font-size: 13px; color: #fff; line-height: 1.65; }
+        .quest-reward { color: var(--neon); font-weight: 700; }
         .quest-item {
             background: var(--accent);
             color: #000;
@@ -382,7 +529,127 @@
             margin-top: 2px;
         }
 
-        /* Footer */
+        /* ===== SELF-DESTRUCT ===== */
+        .destruct-btn {
+            display: block;
+            width: 100%;
+            margin-top: 28px;
+            margin-bottom: 24px;
+            padding: 14px;
+            background: transparent;
+            border: 1px solid rgba(239,68,68,0.3);
+            color: var(--danger);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            z-index: 5;
+            transition: all 0.2s;
+        }
+        .destruct-btn:active {
+            background: rgba(239,68,68,0.1);
+            border-color: var(--danger);
+            transform: scale(0.97);
+        }
+
+        /* Glitch overlay */
+        #glitch-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            pointer-events: none;
+            opacity: 0;
+        }
+        #glitch-overlay.active {
+            animation: glitchFlash 2s forwards;
+        }
+        @keyframes glitchFlash {
+            0% { opacity: 0; background: transparent; }
+            5% { opacity: 1; background: rgba(239,68,68,0.15); }
+            10% { opacity: 1; background: rgba(0,0,0,0.9); }
+            12% { opacity: 1; background: rgba(239,68,68,0.3); }
+            15% { background: #000; }
+            20% { background: rgba(239,68,68,0.1); }
+            25% { background: #000; }
+            50% { background: #000; }
+            70% { background: #000; }
+            100% { opacity: 0; background: transparent; }
+        }
+        .glitch-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            color: var(--danger);
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px var(--danger);
+            opacity: 0;
+        }
+        #glitch-overlay.active .glitch-text {
+            animation: glitchTextShow 2s forwards;
+        }
+        @keyframes glitchTextShow {
+            0%, 14% { opacity: 0; }
+            15% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* ===== SECRET MESSAGE ===== */
+        #secret-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 9997;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s;
+            padding: 40px;
+        }
+        #secret-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .secret-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            animation: secretFloat 2s ease-in-out infinite;
+        }
+        @keyframes secretFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .secret-msg {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--neon);
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.8;
+            max-width: 280px;
+        }
+        .secret-close {
+            margin-top: 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 3px;
+            cursor: pointer;
+            padding: 8px 20px;
+            border: 1px solid rgba(113,113,122,0.3);
+            background: none;
+        }
+        .secret-close:active { background: rgba(113,113,122,0.1); }
+
+        /* ===== FOOTER ===== */
         .footer {
             border-top: 2px solid rgba(113,113,122,0.25);
             padding-top: 20px;
@@ -400,8 +667,7 @@
         }
         .signature {
             position: absolute;
-            bottom: 2px;
-            left: 8px;
+            bottom: 2px; left: 8px;
             font-family: cursive, serif;
             font-size: 22px;
             color: rgba(245,158,11,0.7);
@@ -415,9 +681,7 @@
             letter-spacing: 1.5px;
             margin-top: 6px;
         }
-        .footer-right {
-            text-align: right;
-        }
+        .footer-right { text-align: right; }
         .barcode {
             font-size: 36px;
             letter-spacing: -3px;
@@ -432,146 +696,397 @@
             letter-spacing: 3px;
             margin-top: 6px;
         }
+
+        /* ===== ACCESS LEVEL COUNTER ===== */
+        .access-counter {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            opacity: 0.5;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Scrollbar hide */
+        ::-webkit-scrollbar { width: 0; }
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="seal-bg"></div>
 
-        <div class="header">
-            <h1>А. Н. Я.</h1>
-            <div class="sub">Агентство Необычных Явлений</div>
-            <div class="dept">Департамент О.Р.П.А. // Допуск 4</div>
+<!-- ===== BOOT SCREEN ===== -->
+<div id="boot">
+    <div id="boot-logo"></div>
+    <div id="boot-text"></div>
+    <div id="boot-bar-wrap"><div id="boot-bar"></div></div>
+</div>
+
+<!-- ===== GLITCH OVERLAY ===== -->
+<div id="glitch-overlay"><div class="glitch-text">ОБНАРУЖЕН</div></div>
+
+<!-- ===== SECRET OVERLAY ===== -->
+<div id="secret-overlay">
+    <div class="secret-icon">🛡️</div>
+    <div class="secret-msg">
+        Агент МИМИК —<br>
+        ты самая невероятная,<br>
+        смелая и удивительная.<br><br>
+        Папа и Бьерн тебя обожают.<br>
+        Ты наш суперагент навсегда.<br><br>
+        ❤️
+    </div>
+    <button class="secret-close" onclick="closeSecret()">ЗАКРЫТЬ</button>
+</div>
+
+<!-- ===== MAIN PAGE ===== -->
+<div class="page" id="page">
+    <div class="seal-bg" id="seal-tap"></div>
+
+    <div class="header reveal">
+        <h1>А. Н. Я.</h1>
+        <div class="sub">Агентство Необычных Явлений</div>
+        <div class="dept">Департамент О.Р.П.А. // Допуск 4</div>
+        <div class="classified-stamp">CLASSIFIED</div>
+    </div>
+
+    <div class="photo-section reveal">
+        <div class="photo-frame" id="photo" onclick="scanPhoto()">
+            <div class="c1"></div>
+            <img src="photo.png" alt="Агент Мимик">
+            <div class="scan-line"></div>
+            <div class="scan-result" id="scan-result"><span>IDENTITY CONFIRMED</span></div>
         </div>
 
-        <div class="photo-section">
-            <div class="photo-frame">
-                <div class="c1"></div>
-                <img src="photo.png" alt="Агент Мимик">
+        <div class="id-card">
+            <div class="badge">Активен</div>
+            <div class="id-row">
+                <span class="id-label">Досье:</span>
+                <span class="id-val code">#77-OMEGA-Z</span>
             </div>
-
-            <div class="id-card">
-                <div class="badge">Активен</div>
-                <div class="id-row">
-                    <span class="id-label">Досье:</span>
-                    <span class="id-val code">#77-OMEGA-Z</span>
-                </div>
-                <div class="id-row">
-                    <span class="id-label">Имя:</span>
-                    <span class="id-val">ЗЛАТА</span>
-                </div>
-                <div class="id-row">
-                    <span class="id-label">Позывной:</span>
-                    <span class="id-val callsign">МИМИК</span>
-                </div>
+            <div class="id-row">
+                <span class="id-label">Имя:</span>
+                <span class="id-val">ЗЛАТА</span>
             </div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">
-                <span class="dot"></span> Оперативная Сводка
-            </div>
-            <div class="timeline-item">
-                <span class="tl-label">Внедрение (Легенда):</span> Обучается под прикрытием в тренировочном центре <span class="tl-white">«Discovery»</span>, идеально имитируя обычного ребенка.
-            </div>
-            <div class="timeline-item highlight">
-                <span class="tl-label">Объект «Бьерн»:</span> Назначена хранителем сверхсекретного объекта (Младший брат, 3 месяца). Демонстрирует феноменальную заботу.
-            </div>
-            <div class="timeline-item">
-                <span class="tl-label">Режим гибернации:</span> Строгий уход в спящий режим и отключение систем инициируется ровно в <span class="tl-highlight">22:01</span>.
-            </div>
-            <div class="timeline-item">
-                <span class="tl-label">Дипломатия:</span> Регулярно приносит в жертву тапки автономному уборочному дроиду для предотвращения восстания машин на базе.
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="arsenal">
-                <div class="arsenal-title">&gt; Активный арсенал</div>
-                <div class="arsenal-item"><span class="a-icon">🔫</span> <span class="a-label">Контроль роя:</span> Управление армией из примерно 1000 плюшевых игрушек, разбросанных по всей квартире.</div>
-                <div class="arsenal-item"><span class="a-icon">🎒</span> <span class="a-label">Логистика:</span> Оперирует 40+ портативными модулями маскировки (сумочки и рюкзаки).</div>
-                <div class="arsenal-item"><span class="a-icon">🕶️</span> <span class="a-label">VR-Симуляции:</span> Регулярные тренировки в шлеме виртуальной реальности.</div>
-                <div class="arsenal-item"><span class="a-icon">🎨</span> <span class="a-label">Трансмутация:</span> Способна создавать артефакты из ничего (рисует, собирает оригами).</div>
-                <div class="arsenal-item"><span class="a-icon">✨</span> <span class="a-label">Маскировка:</span> Умная, грациозная. Безупречный стиль сбивает противников с толку.</div>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">
-                <span class="dot"></span> Аналитика навыков
-            </div>
-            <div class="skill">
-                <div class="skill-head">
-                    <span class="skill-name top">Кибер-эмпатия (Нейросети)</span>
-                    <span class="skill-num top">10/10</span>
-                </div>
-                <div class="skill-track">
-                    <div class="skill-fill top" style="width:100%"></div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-head">
-                    <span class="skill-name">Переговоры (с монстрами)</span>
-                    <span class="skill-num">10/10</span>
-                </div>
-                <div class="skill-track">
-                    <div class="skill-fill" style="width:100%"></div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-head">
-                    <span class="skill-name">Вербальная защита (Сарказм)</span>
-                    <span class="skill-num">7/10</span>
-                </div>
-                <div class="skill-track">
-                    <div class="skill-fill" style="width:70%"></div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-head">
-                    <span class="skill-name">Интуиция (Чутье на приключения)</span>
-                    <span class="skill-num">8/10</span>
-                </div>
-                <div class="skill-track">
-                    <div class="skill-fill" style="width:80%"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="vuln">
-                <div class="vuln-title">
-                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                    Системная уязвимость
-                </div>
-                <div class="vuln-text">После кодовой фразы «я точно не забуду» происходит аппаратный сбой и обнуление памяти.</div>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="quest">
-                <div class="quest-head">
-                    <span class="quest-label">Резюме Квеста</span>
-                    <span class="quest-badge">ВЫПОЛНЕНО</span>
-                </div>
-                <div class="quest-text">
-                    За успешное прохождение квеста агенту выдается официальный <span class="quest-reward">ЗНАЧОК АГЕНТА</span>, а также санкционирован доступ к спец-объекту из резерва: <span class="quest-item">«ЗЛАТЕНЫ МЁЧТЫ»</span>.
-                </div>
-            </div>
-        </div>
-
-        <div class="footer">
-            <div class="footer-left">
-                <div class="signature-line">
-                    <span class="signature">Tapulya</span>
-                </div>
-                <div class="footer-label">Куратор: Старший Агент ТАПУЛЯ</div>
-            </div>
-            <div class="footer-right">
-                <div class="barcode">||| ||||| || ||||</div>
-                <div class="auth-code">AUTH: ZL-MIMIC</div>
+            <div class="id-row">
+                <span class="id-label">Позывной:</span>
+                <span class="id-val callsign">МИМИК</span>
             </div>
         </div>
     </div>
+
+    <div class="section reveal">
+        <div class="section-title">
+            <span class="dot"></span> Оперативная Сводка
+        </div>
+        <div class="timeline-item">
+            <span class="tl-label">Внедрение (Легенда):</span> Обучается под прикрытием в тренировочном центре <span class="tl-white">«Discovery»</span>, идеально имитируя обычного ребенка.
+        </div>
+        <div class="timeline-item highlight">
+            <span class="tl-label">Объект «Бьерн»:</span> Назначена хранителем сверхсекретного объекта (Младший брат, 3 месяца). Демонстрирует феноменальную заботу.
+        </div>
+        <div class="timeline-item">
+            <span class="tl-label">Режим гибернации:</span> Строгий уход в спящий режим и отключение систем инициируется ровно в <span class="tl-highlight">22:01</span>.
+        </div>
+        <div class="timeline-item">
+            <span class="tl-label">Дипломатия:</span> Регулярно приносит в жертву тапки автономному уборочному дроиду для предотвращения восстания машин на базе.
+        </div>
+    </div>
+
+    <div class="section reveal">
+        <div class="arsenal">
+            <div class="arsenal-title">&gt; Активный арсенал</div>
+
+            <div class="arsenal-item" onclick="toggleDetail(this)">
+                <span class="a-icon">🔫</span> <span class="a-label">Контроль роя:</span> Управление армией из примерно 1000 плюшевых игрушек, разбросанных по всей квартире.
+                <div class="arsenal-detail">⚠ Каждая игрушка — спящий агент. Не недооценивай.</div>
+            </div>
+            <div class="arsenal-item" onclick="toggleDetail(this)">
+                <span class="a-icon">🎒</span> <span class="a-label">Логистика:</span> Оперирует 40+ портативными модулями маскировки (сумочки и рюкзаки).
+                <div class="arsenal-detail">⚠ Точное содержимое каждого модуля — государственная тайна.</div>
+            </div>
+            <div class="arsenal-item" onclick="toggleDetail(this)">
+                <span class="a-icon">🕶️</span> <span class="a-label">VR-Симуляции:</span> Регулярные тренировки в шлеме виртуальной реальности.
+                <div class="arsenal-detail">⚠ Сертифицированный пилот виртуальных миссий.</div>
+            </div>
+            <div class="arsenal-item" onclick="toggleDetail(this)">
+                <span class="a-icon">🎨</span> <span class="a-label">Трансмутация:</span> Способна создавать артефакты из ничего (рисует, собирает оригами).
+                <div class="arsenal-detail">⚠ Классифицировано как форма боевого искусства.</div>
+            </div>
+            <div class="arsenal-item" onclick="toggleDetail(this)">
+                <span class="a-icon">✨</span> <span class="a-label">Маскировка:</span> Умная, грациозная. Безупречный стиль сбивает противников с толку.
+                <div class="arsenal-detail">⚠ Уровень стиля превышает допустимый для агента-новичка.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section reveal" id="skills-section">
+        <div class="section-title">
+            <span class="dot"></span> Аналитика навыков
+        </div>
+        <div class="skill">
+            <div class="skill-head">
+                <span class="skill-name top">Кибер-эмпатия (Нейросети)</span>
+                <span class="skill-num top">10/10</span>
+            </div>
+            <div class="skill-track">
+                <div class="skill-fill top" data-width="100"></div>
+            </div>
+        </div>
+        <div class="skill">
+            <div class="skill-head">
+                <span class="skill-name">Переговоры (с монстрами)</span>
+                <span class="skill-num">10/10</span>
+            </div>
+            <div class="skill-track">
+                <div class="skill-fill" data-width="100"></div>
+            </div>
+        </div>
+        <div class="skill">
+            <div class="skill-head">
+                <span class="skill-name">Вербальная защита (Сарказм)</span>
+                <span class="skill-num">7/10</span>
+            </div>
+            <div class="skill-track">
+                <div class="skill-fill" data-width="70"></div>
+            </div>
+        </div>
+        <div class="skill">
+            <div class="skill-head">
+                <span class="skill-name">Интуиция (Чутье на приключения)</span>
+                <span class="skill-num">8/10</span>
+            </div>
+            <div class="skill-track">
+                <div class="skill-fill" data-width="80"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section reveal">
+        <div class="vuln">
+            <div class="vuln-title">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                Системная уязвимость
+            </div>
+            <div class="vuln-text">После кодовой фразы «я точно не забуду» происходит аппаратный сбой и обнуление памяти.</div>
+        </div>
+    </div>
+
+    <div class="section reveal">
+        <div class="quest">
+            <div class="quest-head">
+                <span class="quest-label">Резюме Квеста</span>
+                <span class="quest-badge">ВЫПОЛНЕНО</span>
+            </div>
+            <div class="quest-text">
+                За успешное прохождение квеста агенту выдается официальный <span class="quest-reward">ЗНАЧОК АГЕНТА</span>, а также санкционирован доступ к спец-объекту из резерва: <span class="quest-item">«ЗЛАТЕНЫ МЁЧТЫ»</span>.
+            </div>
+        </div>
+    </div>
+
+    <button class="destruct-btn reveal" onclick="selfDestruct()">⚠ ПРОТОКОЛ САМОУНИЧТОЖЕНИЯ ⚠</button>
+
+    <div class="footer reveal">
+        <div class="footer-left">
+            <div class="signature-line">
+                <span class="signature">Tapulya</span>
+            </div>
+            <div class="footer-label">Куратор: Старший Агент ТАПУЛЯ</div>
+        </div>
+        <div class="footer-right">
+            <div class="barcode">||| ||||| || ||||</div>
+            <div class="auth-code">AUTH: ZL-MIMIC</div>
+        </div>
+    </div>
+
+    <div class="access-counter">ПРОСМОТРОВ: <span id="view-count">1</span></div>
+</div>
+
+<script>
+/* ===== SOUND ENGINE (Web Audio API — no files needed) ===== */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() {
+    if (!audioCtx) audioCtx = new AudioCtx();
+}
+function beep(freq, dur, vol) {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.value = vol || 0.08;
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+}
+function clickSound() { beep(800, 0.06, 0.05); }
+function scanSound() {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = 'sawtooth';
+    o.frequency.value = 200;
+    o.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.8);
+    g.gain.value = 0.04;
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+    o.start(); o.stop(audioCtx.currentTime + 1.2);
+}
+function confirmSound() {
+    beep(600, 0.1, 0.06);
+    setTimeout(() => beep(900, 0.15, 0.06), 120);
+}
+function alertSound() {
+    beep(200, 0.15, 0.07);
+    setTimeout(() => beep(150, 0.2, 0.07), 180);
+    setTimeout(() => beep(100, 0.3, 0.07), 380);
+}
+function vibe() { if (navigator.vibrate) navigator.vibrate(15); }
+
+/* ===== BOOT SEQUENCE ===== */
+const bootLines = [
+    'ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ...',
+    'ЗАГРУЗКА МОДУЛЯ А.Н.Я. v4.2',
+    'ПРОВЕРКА ДОПУСКА ........... ОК',
+    'ДЕШИФРОВКА ДАННЫХ .......... ОК',
+    'ЗАГРУЗКА ДОСЬЕ #77-OMEGA-Z',
+    'СКАНИРОВАНИЕ БИОМЕТРИИ .... ОК',
+    'ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ . ОК',
+    '>>> ДОСТУП РАЗРЕШЁН <<<',
+];
+
+let bootEl, barEl;
+async function runBoot() {
+    bootEl = document.getElementById('boot-text');
+    barEl = document.getElementById('boot-bar');
+    let txt = '';
+    for (let i = 0; i < bootLines.length; i++) {
+        const line = bootLines[i];
+        for (let j = 0; j < line.length; j++) {
+            txt += line[j];
+            bootEl.textContent = txt;
+            if (j % 3 === 0) beep(400 + Math.random() * 400, 0.02, 0.02);
+            await sleep(18 + Math.random() * 12);
+        }
+        txt += '\n';
+        bootEl.textContent = txt;
+        barEl.style.width = ((i + 1) / bootLines.length * 100) + '%';
+        await sleep(150 + Math.random() * 100);
+    }
+    confirmSound();
+    await sleep(500);
+    document.getElementById('boot').classList.add('done');
+    document.getElementById('page').classList.add('visible');
+    await sleep(600);
+    document.getElementById('boot').style.display = 'none';
+    initReveal();
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ===== PHOTO SCAN ===== */
+let scanning = false;
+function scanPhoto() {
+    if (scanning) return;
+    scanning = true;
+    clickSound();
+    vibe();
+    const frame = document.getElementById('photo');
+    const result = document.getElementById('scan-result');
+    frame.classList.add('scanning');
+    scanSound();
+    setTimeout(() => {
+        result.classList.add('show');
+        confirmSound();
+        vibe();
+    }, 1300);
+    setTimeout(() => {
+        frame.classList.remove('scanning');
+        result.classList.remove('show');
+        scanning = false;
+    }, 3200);
+}
+
+/* ===== ARSENAL DETAILS ===== */
+function toggleDetail(el) {
+    clickSound();
+    vibe();
+    const detail = el.querySelector('.arsenal-detail');
+    if (!detail) return;
+    const wasOpen = detail.classList.contains('open');
+    document.querySelectorAll('.arsenal-detail.open').forEach(d => d.classList.remove('open'));
+    if (!wasOpen) detail.classList.add('open');
+}
+
+/* ===== SELF DESTRUCT ===== */
+let destructing = false;
+function selfDestruct() {
+    if (destructing) return;
+    destructing = true;
+    alertSound();
+    vibe();
+    const ov = document.getElementById('glitch-overlay');
+    ov.classList.add('active');
+    if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
+    setTimeout(() => {
+        ov.classList.remove('active');
+        destructing = false;
+    }, 2200);
+}
+
+/* ===== SECRET (triple tap on seal area / header) ===== */
+let tapCount = 0, tapTimer;
+document.querySelector('.header').addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 500);
+    if (tapCount >= 3) {
+        tapCount = 0;
+        openSecret();
+    }
+});
+function openSecret() {
+    confirmSound();
+    if (navigator.vibrate) navigator.vibrate([30, 50, 30, 50, 100]);
+    document.getElementById('secret-overlay').classList.add('show');
+}
+function closeSecret() {
+    clickSound();
+    document.getElementById('secret-overlay').classList.remove('show');
+}
+
+/* ===== SCROLL REVEAL + SKILL BARS ===== */
+function initReveal() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                e.target.classList.add('visible');
+                const fills = e.target.querySelectorAll('.skill-fill[data-width]');
+                fills.forEach((f, i) => {
+                    setTimeout(() => {
+                        f.style.width = f.dataset.width + '%';
+                    }, i * 150);
+                });
+                observer.unobserve(e.target);
+            }
+        });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+/* ===== VIEW COUNTER (localStorage) ===== */
+(function() {
+    let v = parseInt(localStorage.getItem('zl_views') || '0', 10) + 1;
+    localStorage.setItem('zl_views', v);
+    window.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('view-count');
+        if (el) el.textContent = v;
+    });
+})();
+
+/* ===== INIT ===== */
+window.addEventListener('DOMContentLoaded', runBoot);
+</script>
 </body>
 </html>
