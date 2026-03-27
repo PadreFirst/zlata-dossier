@@ -41,16 +41,21 @@
             padding-top: min(18vh, 120px);
         }
         .fp-seal {
-            width: 56px; height: 56px;
+            width: 90px; height: 90px;
             background: url('seal.png') center/contain no-repeat;
-            filter: grayscale(1) brightness(0.5);
-            margin-bottom: 16px; opacity: 0.5;
+            filter: brightness(0.8);
+            margin-bottom: 20px; opacity: 0.7;
+            animation: sealGlow 2s ease-in-out infinite alternate;
+        }
+        @keyframes sealGlow {
+            from { filter: brightness(0.6); opacity: 0.5; }
+            to { filter: brightness(1); opacity: 0.8; }
         }
         .fp-title {
-            font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 700;
-            color: var(--muted); letter-spacing: 3px; text-transform: uppercase; text-align: center;
+            font-family: 'Orbitron', sans-serif; font-size: 15px; font-weight: 700;
+            color: var(--text); letter-spacing: 4px; text-transform: uppercase; text-align: center;
         }
-        .fp-sub { font-size: 13px; color: rgba(245,158,11,0.7); margin-top: 8px; text-align: center; }
+        .fp-sub { font-size: 14px; color: var(--accent); margin-top: 10px; text-align: center; }
         .fp-result {
             margin-bottom: 32px; text-align: center; min-height: 50px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -96,7 +101,7 @@
         }
         .fp-box.scanning .fp-scan { opacity: 1; animation: fpScanDown 1.8s ease-in-out; }
         @keyframes fpScanDown { 0% { top: 0; opacity: 0.5; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: calc(100% - 3px); opacity: 0.5; } }
-        .fp-hint { font-size: 12px; color: var(--muted); animation: hintPulse 2s ease-in-out infinite; margin-bottom: 10px; }
+        .fp-hint { font-size: 13px; color: var(--accent); animation: hintPulse 2s ease-in-out infinite; margin-bottom: 10px; }
         @keyframes hintPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
 
         /* ========== BOOT ========== */
@@ -332,7 +337,7 @@
 <div id="glitch-overlay"><div class="glitch-text">ДОСЬЕ УНИЧТОЖЕНО<span class="glitch-sub">данные стёрты безвозвратно</span></div></div>
 <div id="secret-overlay">
     <div class="secret-icon">🛡️</div>
-    <div class="secret-msg">Агент МИМИК —<br>ты самая невероятная,<br>смелая и удивительная.<br><br>Папа и Бьерн тебя обожают.<br>Ты наш суперагент навсегда.<br><br>❤️</div>
+    <div class="secret-msg">Агент МИМИК —<br>ты самая невероятная,<br>смелая и удивительная.<br><br>Папа и Бьёрн тебя обожают.<br>Ты наш суперагент навсегда.<br><br>❤️</div>
     <button class="secret-close" onclick="closeSecret()">ЗАКРЫТЬ</button>
 </div>
 
@@ -356,7 +361,7 @@
     <div class="section reveal">
         <div class="section-title"><span class="dot"></span> Оперативная Сводка</div>
         <div class="timeline-item"><span class="tl-label">Внедрение (Легенда):</span> Обучается под прикрытием в тренировочном центре <span class="tl-white">«Discovery»</span>, идеально имитируя обычного ребенка.</div>
-        <div class="timeline-item highlight"><span class="tl-label">Объект «Бьерн»:</span> Назначена хранителем сверхсекретного объекта (Младший брат, 3 месяца). Демонстрирует феноменальную заботу.</div>
+        <div class="timeline-item highlight"><span class="tl-label">Объект «Бьёрн»:</span> Назначена хранителем сверхсекретного объекта (Младший брат, 3 месяца). Демонстрирует феноменальную заботу.</div>
         <div class="timeline-item"><span class="tl-label">Режим гибернации:</span> Строгий уход в спящий режим и отключение систем инициируется ровно в <span class="tl-highlight">22:01</span>.</div>
         <div class="timeline-item"><span class="tl-label">Дипломатия:</span> Регулярно приносит в жертву тапки автономному уборочному дроиду для предотвращения восстания машин на базе.</div>
     </div>
@@ -400,7 +405,10 @@
 <script>
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
-function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+function ensureAudio() {
+    if (!audioCtx) audioCtx = new AudioCtx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
 function beep(f, d, v, type) {
     ensureAudio();
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
@@ -470,35 +478,41 @@ function startScan(e) {
     if (fpDone) return;
     e.preventDefault();
     fpDone = true;
+
     ensureAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
     vibe(20);
-    clickSound();
-
-    const box = document.getElementById('fp-box');
-    const result = document.getElementById('fp-result-text');
-    document.getElementById('fp-hint').style.display = 'none';
-
-    box.classList.add('scanning');
-    result.textContent = 'СКАНИРОВАНИЕ...';
-    result.className = 'fp-result-text scanning';
-    scanSound();
-
     setTimeout(() => {
-        box.classList.remove('scanning');
-        box.classList.add('confirmed');
-        result.textContent = '✓ ДОСТУП РАЗРЕШЁН';
-        result.className = 'fp-result-text confirmed';
-        confirmSound();
-        vibe(50);
-    }, 2000);
+        clickSound();
 
-    setTimeout(() => {
-        document.getElementById('fp-screen').classList.add('done');
+        const box = document.getElementById('fp-box');
+        const result = document.getElementById('fp-result-text');
+        document.getElementById('fp-hint').style.display = 'none';
+
+        box.classList.add('scanning');
+        result.textContent = 'СКАНИРОВАНИЕ...';
+        result.className = 'fp-result-text scanning';
+
+        setTimeout(() => scanSound(), 50);
+
         setTimeout(() => {
-            document.getElementById('fp-screen').style.display = 'none';
-            runBoot();
-        }, 500);
-    }, 4200);
+            box.classList.remove('scanning');
+            box.classList.add('confirmed');
+            result.textContent = '✓ ДОСТУП РАЗРЕШЁН';
+            result.className = 'fp-result-text confirmed';
+            confirmSound();
+            vibe(50);
+        }, 2000);
+
+        setTimeout(() => {
+            document.getElementById('fp-screen').classList.add('done');
+            setTimeout(() => {
+                document.getElementById('fp-screen').style.display = 'none';
+                runBoot();
+            }, 500);
+        }, 4200);
+    }, 50);
 }
 
 /* ===== BOOT ===== */
@@ -511,9 +525,11 @@ const bootLines = [
     '>>> ОТКРЫТИЕ ДОСЬЕ <<<',
 ];
 async function runBoot() {
+    ensureAudio();
     const boot = document.getElementById('boot');
     boot.classList.add('active');
-    beep(300, 0.15, 0.03);
+    beep(300, 0.2, 0.04);
+    await sleep(100);
     const el = document.getElementById('boot-text');
     const bar = document.getElementById('boot-bar');
     let txt = '';
@@ -522,24 +538,41 @@ async function runBoot() {
         for (let j = 0; j < line.length; j++) {
             txt += line[j];
             el.textContent = txt;
-            if (j % 3 === 0) beep(400 + Math.random() * 600, 0.02, 0.02);
+            if (j % 3 === 0) beep(400 + Math.random() * 600, 0.025, 0.025);
             await sleep(10 + Math.random() * 8);
         }
         txt += '\n'; el.textContent = txt;
         bar.style.width = ((i + 1) / bootLines.length * 100) + '%';
-        beep(600 + i * 80, 0.08, 0.03);
+        if (line.includes('ОК')) beep(800 + i * 60, 0.1, 0.04);
+        else beep(500 + i * 50, 0.08, 0.03);
+        vibe(8);
         await sleep(80 + Math.random() * 60);
     }
     confirmSound();
     vibe(30);
-    await sleep(400);
+    await sleep(500);
     boot.classList.add('done');
     await sleep(400);
     boot.style.display = 'none';
     pageAppearSound();
     vibe(20);
     document.getElementById('page').classList.add('visible');
-    initReveal();
+    staggerReveal();
+}
+
+/* ===== STAGGERED PAGE REVEAL ===== */
+async function staggerReveal() {
+    const sections = document.querySelectorAll('.reveal');
+    for (let i = 0; i < sections.length; i++) {
+        await sleep(150);
+        sections[i].classList.add('visible');
+        revealSound();
+        vibe(6);
+        const fills = sections[i].querySelectorAll('.skill-fill[data-width]');
+        fills.forEach((f, j) => {
+            setTimeout(() => { f.style.width = f.dataset.width + '%'; skillSound(j); vibe(6); }, 200 + j * 250);
+        });
+    }
 }
 
 /* ===== ARSENAL ===== */
@@ -576,34 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function openSecret() { secretSound(); vibe([30, 50, 30, 50, 100]); document.getElementById('secret-overlay').classList.add('show'); }
 function closeSecret() { clickSound(); vibe(10); document.getElementById('secret-overlay').classList.remove('show'); }
 
-/* ===== REVEAL + SKILL SOUNDS ===== */
-function initReveal() {
-    let revealIdx = 0;
-    const obs = new IntersectionObserver((entries) => {
-        entries.forEach(e => {
-            if (e.isIntersecting) {
-                const delay = revealIdx * 80;
-                revealIdx++;
-                setTimeout(() => {
-                    e.target.classList.add('visible');
-                    revealSound();
-                    vibe(8);
-                }, delay);
-
-                const fills = e.target.querySelectorAll('.skill-fill[data-width]');
-                fills.forEach((f, i) => {
-                    setTimeout(() => {
-                        f.style.width = f.dataset.width + '%';
-                        skillSound(i);
-                        vibe(8);
-                    }, delay + 200 + i * 250);
-                });
-                obs.unobserve(e.target);
-            }
-        });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
-}
+/* initReveal replaced by staggerReveal above */
 
 /* ===== VIEW COUNTER ===== */
 (function() {
