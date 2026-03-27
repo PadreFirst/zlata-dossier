@@ -316,7 +316,7 @@
         <div class="fp-sub">Приложите палец к сканеру</div>
     </div>
     <div class="fp-result"><div class="fp-result-text" id="fp-result-text"></div></div>
-    <div class="fp-box" id="fp-box" ontouchstart="startScan(event)" onmousedown="startScan(event)">
+    <div class="fp-box" id="fp-box">
         <div class="fp-corners"><div class="c"></div></div>
         <svg class="fp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)">
             <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-3.3 2.7-6 6-6 1.8 0 3.4.8 4.5 2"/>
@@ -403,38 +403,37 @@
 </div>
 
 <script>
-/* ===== AUDIO ENGINE — iOS-compatible ===== */
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let audioCtx, audioUnlocked = false;
+/* ===== AUDIO — iOS requires touchend/click to unlock ===== */
+let audioCtx, audioReady = false;
 
-function unlockAudio() {
-    if (audioUnlocked) return;
-    if (!audioCtx) audioCtx = new AudioCtx();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const b = audioCtx.createBuffer(1, 1, 22050);
-    const s = audioCtx.createBufferSource();
-    s.buffer = b;
-    s.connect(audioCtx.destination);
-    s.start(0);
-    audioUnlocked = true;
+function initAudio() {
+    if (audioReady) return true;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const b = audioCtx.createBuffer(1, 1, 22050);
+        const s = audioCtx.createBufferSource();
+        s.buffer = b; s.connect(audioCtx.destination); s.start(0);
+        audioReady = true;
+    } catch(e) {}
+    return audioReady;
 }
 
 function beep(f, d, v, type) {
-    if (!audioCtx || audioCtx.state === 'closed') return;
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioCtx || !audioReady) return;
     try {
         const t = audioCtx.currentTime;
         const o = audioCtx.createOscillator(), g = audioCtx.createGain();
         o.connect(g); g.connect(audioCtx.destination);
-        o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+        o.type = type || 'sine';
+        o.frequency.setValueAtTime(f, t);
         g.gain.setValueAtTime(v || 0.06, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + d);
         o.start(t); o.stop(t + d);
     } catch(e) {}
 }
 
-function tapSound() { beep(700, 0.05, 0.04); }
-
+function tapSound() { beep(700, 0.05, 0.05); }
 function scanSound() {
     if (!audioCtx) return;
     try {
@@ -452,53 +451,49 @@ function scanSound() {
     setTimeout(() => beep(500, 0.3, 0.03, 'triangle'), 1000);
     setTimeout(() => beep(700, 0.2, 0.03, 'triangle'), 1400);
 }
-
 function confirmSound() {
     beep(523, 0.15, 0.08);
     setTimeout(() => beep(659, 0.15, 0.08), 140);
     setTimeout(() => beep(784, 0.2, 0.08), 280);
     setTimeout(() => beep(1047, 0.3, 0.06), 450);
 }
-
 function alertSound() {
     beep(200, 0.15, 0.08, 'sawtooth');
     setTimeout(() => beep(150, 0.2, 0.08, 'sawtooth'), 180);
     setTimeout(() => beep(100, 0.3, 0.08, 'sawtooth'), 380);
     setTimeout(() => beep(80, 0.5, 0.06, 'sawtooth'), 600);
 }
-
 function revealSound() { beep(500, 0.12, 0.03); }
-
-function skillSound(idx) {
-    const freqs = [440, 523, 659, 784];
-    beep(freqs[idx] || 600, 0.25, 0.05, 'triangle');
-}
-
+function skillSound(i) { beep([440,523,659,784][i]||600, 0.25, 0.05, 'triangle'); }
 function pageAppearSound() {
-    beep(300, 0.1, 0.04);
-    setTimeout(() => beep(450, 0.1, 0.04), 100);
-    setTimeout(() => beep(600, 0.15, 0.05), 200);
-    setTimeout(() => beep(900, 0.2, 0.04), 350);
+    beep(300,0.1,0.04); setTimeout(()=>beep(450,0.1,0.04),100);
+    setTimeout(()=>beep(600,0.15,0.05),200); setTimeout(()=>beep(900,0.2,0.04),350);
 }
-
 function secretSound() {
-    beep(600, 0.15, 0.06, 'triangle');
-    setTimeout(() => beep(800, 0.15, 0.06, 'triangle'), 150);
-    setTimeout(() => beep(1000, 0.2, 0.06, 'triangle'), 300);
-    setTimeout(() => beep(1200, 0.3, 0.05, 'triangle'), 480);
+    beep(600,0.15,0.06,'triangle'); setTimeout(()=>beep(800,0.15,0.06,'triangle'),150);
+    setTimeout(()=>beep(1000,0.2,0.06,'triangle'),300); setTimeout(()=>beep(1200,0.3,0.05,'triangle'),480);
 }
-
-function vibe(ms) { try { navigator.vibrate(ms || 15); } catch(e) {} }
+function vibe(ms) { try { navigator.vibrate(ms||15); } catch(e) {} }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-/* ===== FINGERPRINT ===== */
+/* ===== FINGERPRINT — uses click/touchend (NOT touchstart) ===== */
 let fpDone = false;
-function startScan(e) {
+document.addEventListener('DOMContentLoaded', () => {
+    const box = document.getElementById('fp-box');
+    if (!box) return;
+
+    box.addEventListener('click', doScan);
+    box.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        doScan();
+    });
+});
+
+function doScan() {
     if (fpDone) return;
-    e.preventDefault();
     fpDone = true;
 
-    unlockAudio();
+    initAudio();
     tapSound();
     vibe(20);
 
@@ -509,7 +504,7 @@ function startScan(e) {
     box.classList.add('scanning');
     result.textContent = 'СКАНИРОВАНИЕ...';
     result.className = 'fp-result-text scanning';
-    scanSound();
+    setTimeout(() => scanSound(), 80);
 
     setTimeout(() => {
         box.classList.remove('scanning');
@@ -549,57 +544,43 @@ async function runBoot() {
     for (let i = 0; i < bootLines.length; i++) {
         const line = bootLines[i];
         for (let j = 0; j < line.length; j++) {
-            txt += line[j];
-            el.textContent = txt;
-            if (j % 3 === 0) beep(400 + Math.random() * 600, 0.025, 0.03);
-            await sleep(10 + Math.random() * 8);
+            txt += line[j]; el.textContent = txt;
+            if (j % 3 === 0) beep(400+Math.random()*600, 0.025, 0.03);
+            await sleep(10+Math.random()*8);
         }
         txt += '\n'; el.textContent = txt;
-        bar.style.width = ((i + 1) / bootLines.length * 100) + '%';
-        if (line.includes('ОК')) {
-            beep(800 + i * 60, 0.12, 0.05);
-        } else {
-            beep(500 + i * 50, 0.1, 0.04);
-        }
+        bar.style.width = ((i+1)/bootLines.length*100)+'%';
+        beep(line.includes('ОК') ? 800+i*60 : 500+i*50, 0.12, 0.05);
         vibe(8);
-        await sleep(80 + Math.random() * 60);
+        await sleep(80+Math.random()*60);
     }
-    confirmSound();
-    vibe(30);
+    confirmSound(); vibe(30);
     await sleep(500);
     boot.classList.add('done');
     await sleep(400);
     boot.style.display = 'none';
-    pageAppearSound();
-    vibe(20);
+    pageAppearSound(); vibe(20);
     document.getElementById('page').classList.add('visible');
     staggerReveal();
 }
 
-/* ===== STAGGERED PAGE REVEAL ===== */
+/* ===== STAGGERED REVEAL ===== */
 async function staggerReveal() {
     const sections = document.querySelectorAll('.reveal');
     for (let i = 0; i < sections.length; i++) {
         await sleep(180);
         sections[i].classList.add('visible');
-        revealSound();
-        vibe(6);
+        revealSound(); vibe(6);
 
         const fills = sections[i].querySelectorAll('.skill-fill[data-width]');
-        if (fills.length > 0) {
-            await sleep(100);
+        if (fills.length) {
+            await sleep(150);
             for (let j = 0; j < fills.length; j++) {
-                await new Promise(resolve => {
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            fills[j].style.width = fills[j].dataset.width + '%';
-                            skillSound(j);
-                            vibe(6);
-                            resolve();
-                        });
-                    });
-                });
-                await sleep(250);
+                fills[j].style.width = '0%';
+                fills[j].offsetWidth;
+                fills[j].style.width = fills[j].dataset.width + '%';
+                skillSound(j); vibe(6);
+                await sleep(300);
             }
         }
     }
@@ -620,7 +601,7 @@ let destructed = false;
 function selfDestruct() {
     if (destructed) return;
     destructed = true;
-    alertSound(); vibe([50, 30, 50, 30, 100]);
+    alertSound(); vibe([50,30,50,30,100]);
     document.getElementById('glitch-overlay').classList.add('active');
 }
 
@@ -628,24 +609,22 @@ function selfDestruct() {
 let tapCount = 0, tapTimer;
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.header')?.addEventListener('click', () => {
-        tapCount++;
-        tapSound();
-        vibe(10);
+        tapCount++; tapSound(); vibe(10);
         clearTimeout(tapTimer);
         tapTimer = setTimeout(() => { tapCount = 0; }, 500);
         if (tapCount >= 3) { tapCount = 0; openSecret(); }
     });
 });
-function openSecret() { secretSound(); vibe([30, 50, 30, 50, 100]); document.getElementById('secret-overlay').classList.add('show'); }
+function openSecret() { secretSound(); vibe([30,50,30,50,100]); document.getElementById('secret-overlay').classList.add('show'); }
 function closeSecret() { tapSound(); vibe(10); document.getElementById('secret-overlay').classList.remove('show'); }
 
-/* ===== VIEW COUNTER ===== */
-(function() {
-    let v = parseInt(localStorage.getItem('zl_views') || '0', 10) + 1;
-    localStorage.setItem('zl_views', v);
-    window.addEventListener('DOMContentLoaded', () => {
+/* ===== VIEWS ===== */
+(function(){
+    let v = parseInt(localStorage.getItem('zl_views')||'0',10)+1;
+    localStorage.setItem('zl_views',v);
+    window.addEventListener('DOMContentLoaded',()=>{
         const el = document.getElementById('view-count');
-        if (el) el.textContent = v;
+        if(el) el.textContent = v;
     });
 })();
 </script>
