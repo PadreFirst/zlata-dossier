@@ -403,72 +403,91 @@
 </div>
 
 <script>
+/* ===== AUDIO ENGINE — iOS-compatible ===== */
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let audioCtx;
-function ensureAudio() {
+let audioCtx, audioUnlocked = false;
+
+function unlockAudio() {
+    if (audioUnlocked) return;
     if (!audioCtx) audioCtx = new AudioCtx();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    const b = audioCtx.createBuffer(1, 1, 22050);
+    const s = audioCtx.createBufferSource();
+    s.buffer = b;
+    s.connect(audioCtx.destination);
+    s.start(0);
+    audioUnlocked = true;
 }
+
 function beep(f, d, v, type) {
-    ensureAudio();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.type = type || 'sine'; o.frequency.value = f;
-    g.gain.value = v || 0.06;
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
-    o.start(); o.stop(audioCtx.currentTime + d);
+    if (!audioCtx || audioCtx.state === 'closed') return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    try {
+        const t = audioCtx.currentTime;
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+        g.gain.setValueAtTime(v || 0.06, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + d);
+        o.start(t); o.stop(t + d);
+    } catch(e) {}
 }
-function clickSound() { beep(800, 0.06, 0.05); beep(1200, 0.03, 0.03); }
+
+function tapSound() { beep(700, 0.05, 0.04); }
+
 function scanSound() {
-    ensureAudio();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.type = 'sawtooth'; o.frequency.value = 200;
-    o.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 1.6);
-    g.gain.value = 0.04;
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.8);
-    o.start(); o.stop(audioCtx.currentTime + 1.8);
-    setTimeout(() => beep(300, 0.4, 0.02, 'triangle'), 400);
-    setTimeout(() => beep(500, 0.3, 0.02, 'triangle'), 900);
+    if (!audioCtx) return;
+    try {
+        const t = audioCtx.currentTime;
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(200, t);
+        o.frequency.linearRampToValueAtTime(900, t + 1.6);
+        g.gain.setValueAtTime(0.05, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+        o.start(t); o.stop(t + 1.8);
+    } catch(e) {}
+    setTimeout(() => beep(300, 0.3, 0.03, 'triangle'), 500);
+    setTimeout(() => beep(500, 0.3, 0.03, 'triangle'), 1000);
+    setTimeout(() => beep(700, 0.2, 0.03, 'triangle'), 1400);
 }
+
 function confirmSound() {
-    beep(523, 0.15, 0.07);
-    setTimeout(() => beep(659, 0.15, 0.07), 140);
-    setTimeout(() => beep(784, 0.25, 0.07), 280);
-    setTimeout(() => beep(1047, 0.3, 0.05), 450);
+    beep(523, 0.15, 0.08);
+    setTimeout(() => beep(659, 0.15, 0.08), 140);
+    setTimeout(() => beep(784, 0.2, 0.08), 280);
+    setTimeout(() => beep(1047, 0.3, 0.06), 450);
 }
+
 function alertSound() {
-    beep(200, 0.15, 0.07, 'sawtooth');
-    setTimeout(() => beep(150, 0.2, 0.07, 'sawtooth'), 180);
-    setTimeout(() => beep(100, 0.3, 0.07, 'sawtooth'), 380);
-    setTimeout(() => beep(80, 0.4, 0.05, 'sawtooth'), 600);
+    beep(200, 0.15, 0.08, 'sawtooth');
+    setTimeout(() => beep(150, 0.2, 0.08, 'sawtooth'), 180);
+    setTimeout(() => beep(100, 0.3, 0.08, 'sawtooth'), 380);
+    setTimeout(() => beep(80, 0.5, 0.06, 'sawtooth'), 600);
 }
-function revealSound() {
-    ensureAudio();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.type = 'sine'; o.frequency.value = 400;
-    o.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
-    g.gain.value = 0.03;
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-    o.start(); o.stop(audioCtx.currentTime + 0.2);
-}
+
+function revealSound() { beep(500, 0.12, 0.03); }
+
 function skillSound(idx) {
     const freqs = [440, 523, 659, 784];
-    beep(freqs[idx] || 600, 0.2, 0.04, 'triangle');
+    beep(freqs[idx] || 600, 0.25, 0.05, 'triangle');
 }
+
 function pageAppearSound() {
-    beep(300, 0.1, 0.03);
-    setTimeout(() => beep(450, 0.1, 0.03), 80);
-    setTimeout(() => beep(600, 0.15, 0.04), 160);
-    setTimeout(() => beep(900, 0.2, 0.03), 280);
+    beep(300, 0.1, 0.04);
+    setTimeout(() => beep(450, 0.1, 0.04), 100);
+    setTimeout(() => beep(600, 0.15, 0.05), 200);
+    setTimeout(() => beep(900, 0.2, 0.04), 350);
 }
+
 function secretSound() {
-    beep(600, 0.15, 0.05, 'triangle');
-    setTimeout(() => beep(800, 0.15, 0.05, 'triangle'), 150);
-    setTimeout(() => beep(1000, 0.2, 0.05, 'triangle'), 300);
-    setTimeout(() => beep(1200, 0.3, 0.04, 'triangle'), 480);
+    beep(600, 0.15, 0.06, 'triangle');
+    setTimeout(() => beep(800, 0.15, 0.06, 'triangle'), 150);
+    setTimeout(() => beep(1000, 0.2, 0.06, 'triangle'), 300);
+    setTimeout(() => beep(1200, 0.3, 0.05, 'triangle'), 480);
 }
+
 function vibe(ms) { try { navigator.vibrate(ms || 15); } catch(e) {} }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -479,40 +498,35 @@ function startScan(e) {
     e.preventDefault();
     fpDone = true;
 
-    ensureAudio();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-
+    unlockAudio();
+    tapSound();
     vibe(20);
+
+    const box = document.getElementById('fp-box');
+    const result = document.getElementById('fp-result-text');
+    document.getElementById('fp-hint').style.display = 'none';
+
+    box.classList.add('scanning');
+    result.textContent = 'СКАНИРОВАНИЕ...';
+    result.className = 'fp-result-text scanning';
+    scanSound();
+
     setTimeout(() => {
-        clickSound();
+        box.classList.remove('scanning');
+        box.classList.add('confirmed');
+        result.textContent = '✓ ДОСТУП РАЗРЕШЁН';
+        result.className = 'fp-result-text confirmed';
+        confirmSound();
+        vibe(50);
+    }, 2000);
 
-        const box = document.getElementById('fp-box');
-        const result = document.getElementById('fp-result-text');
-        document.getElementById('fp-hint').style.display = 'none';
-
-        box.classList.add('scanning');
-        result.textContent = 'СКАНИРОВАНИЕ...';
-        result.className = 'fp-result-text scanning';
-
-        setTimeout(() => scanSound(), 50);
-
+    setTimeout(() => {
+        document.getElementById('fp-screen').classList.add('done');
         setTimeout(() => {
-            box.classList.remove('scanning');
-            box.classList.add('confirmed');
-            result.textContent = '✓ ДОСТУП РАЗРЕШЁН';
-            result.className = 'fp-result-text confirmed';
-            confirmSound();
-            vibe(50);
-        }, 2000);
-
-        setTimeout(() => {
-            document.getElementById('fp-screen').classList.add('done');
-            setTimeout(() => {
-                document.getElementById('fp-screen').style.display = 'none';
-                runBoot();
-            }, 500);
-        }, 4200);
-    }, 50);
+            document.getElementById('fp-screen').style.display = 'none';
+            runBoot();
+        }, 500);
+    }, 4200);
 }
 
 /* ===== BOOT ===== */
@@ -525,11 +539,10 @@ const bootLines = [
     '>>> ОТКРЫТИЕ ДОСЬЕ <<<',
 ];
 async function runBoot() {
-    ensureAudio();
     const boot = document.getElementById('boot');
     boot.classList.add('active');
-    beep(300, 0.2, 0.04);
-    await sleep(100);
+    beep(300, 0.2, 0.05);
+    await sleep(120);
     const el = document.getElementById('boot-text');
     const bar = document.getElementById('boot-bar');
     let txt = '';
@@ -538,13 +551,16 @@ async function runBoot() {
         for (let j = 0; j < line.length; j++) {
             txt += line[j];
             el.textContent = txt;
-            if (j % 3 === 0) beep(400 + Math.random() * 600, 0.025, 0.025);
+            if (j % 3 === 0) beep(400 + Math.random() * 600, 0.025, 0.03);
             await sleep(10 + Math.random() * 8);
         }
         txt += '\n'; el.textContent = txt;
         bar.style.width = ((i + 1) / bootLines.length * 100) + '%';
-        if (line.includes('ОК')) beep(800 + i * 60, 0.1, 0.04);
-        else beep(500 + i * 50, 0.08, 0.03);
+        if (line.includes('ОК')) {
+            beep(800 + i * 60, 0.12, 0.05);
+        } else {
+            beep(500 + i * 50, 0.1, 0.04);
+        }
         vibe(8);
         await sleep(80 + Math.random() * 60);
     }
@@ -564,25 +580,39 @@ async function runBoot() {
 async function staggerReveal() {
     const sections = document.querySelectorAll('.reveal');
     for (let i = 0; i < sections.length; i++) {
-        await sleep(150);
+        await sleep(180);
         sections[i].classList.add('visible');
         revealSound();
         vibe(6);
+
         const fills = sections[i].querySelectorAll('.skill-fill[data-width]');
-        fills.forEach((f, j) => {
-            setTimeout(() => { f.style.width = f.dataset.width + '%'; skillSound(j); vibe(6); }, 200 + j * 250);
-        });
+        if (fills.length > 0) {
+            await sleep(100);
+            for (let j = 0; j < fills.length; j++) {
+                await new Promise(resolve => {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            fills[j].style.width = fills[j].dataset.width + '%';
+                            skillSound(j);
+                            vibe(6);
+                            resolve();
+                        });
+                    });
+                });
+                await sleep(250);
+            }
+        }
     }
 }
 
 /* ===== ARSENAL ===== */
 function toggleDetail(el) {
-    clickSound(); vibe(10);
+    tapSound(); vibe(10);
     const d = el.querySelector('.arsenal-detail');
     if (!d) return;
     const was = d.classList.contains('open');
     document.querySelectorAll('.arsenal-detail.open').forEach(x => x.classList.remove('open'));
-    if (!was) { d.classList.add('open'); beep(500, 0.08, 0.03, 'triangle'); }
+    if (!was) d.classList.add('open');
 }
 
 /* ===== SELF DESTRUCT ===== */
@@ -599,7 +629,7 @@ let tapCount = 0, tapTimer;
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.header')?.addEventListener('click', () => {
         tapCount++;
-        beep(600 + tapCount * 200, 0.04, 0.03);
+        tapSound();
         vibe(10);
         clearTimeout(tapTimer);
         tapTimer = setTimeout(() => { tapCount = 0; }, 500);
@@ -607,9 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 function openSecret() { secretSound(); vibe([30, 50, 30, 50, 100]); document.getElementById('secret-overlay').classList.add('show'); }
-function closeSecret() { clickSound(); vibe(10); document.getElementById('secret-overlay').classList.remove('show'); }
-
-/* initReveal replaced by staggerReveal above */
+function closeSecret() { tapSound(); vibe(10); document.getElementById('secret-overlay').classList.remove('show'); }
 
 /* ===== VIEW COUNTER ===== */
 (function() {
